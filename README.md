@@ -118,6 +118,3 @@ To access management features, use the **Administration** section at the bottom 
 2. **Manage Items**: Remove items from the database; changes reflect immediately on the home page.
 
 ---
-
-## 🛡️ License
-Distributed under the ISC License.
