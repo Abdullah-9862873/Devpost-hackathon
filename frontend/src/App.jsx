@@ -19,47 +19,15 @@ function AppContent() {
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        if (!isListening && transcript) {
-            handleVoiceCommand(transcript);
-        }
-    }, [isListening, transcript]);
-
-    const handleVoiceCommand = async (text) => {
-        setIsLoading(true);
-        setNotification(null);
-        try {
-            const res = await axios.post('/api/intent', { transcript: text });
-            const { intent, params, responseMessage } = res.data;
-
-            setNotification(responseMessage);
-
-            if (intent === 'SHOW_MENU' && params.category) {
-                navigate(`/category/${params.category.toLowerCase()}`);
-            } else if (intent === 'SEARCH' && params.query) {
-                navigate(`/search?q=${params.query}`);
-            } else if (intent === 'SHOW_DEALS') {
-                navigate('/category/deals');
-            } else if (intent === 'NAVIGATE_CART') {
-                navigate('/cart');
-            } else if (intent === 'ADD_TO_CART' && params.item) {
-                // Fallback or specific search for item logic could go here
-                navigate(`/search?q=${params.item}`);
-            }
-        } catch (err) {
-            console.error(err);
-            setNotification("Sorry, I couldn't understand that.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
+    const { addToCart } = useCart();
     const [featuredItems, setFeaturedItems] = useState([]);
+    const [allMenuItems, setAllMenuItems] = useState([]);
 
     useEffect(() => {
         const fetchAll = async () => {
             try {
                 const res = await axios.get('/api/menu');
+                setAllMenuItems(res.data);
                 setFeaturedItems(res.data.slice(0, 6)); // Show first 6 as featured
             } catch (err) {
                 console.error(err);
@@ -67,6 +35,44 @@ function AppContent() {
         };
         fetchAll();
     }, []);
+
+    useEffect(() => {
+        if (!isListening && transcript) {
+            handleVoiceCommand(transcript);
+        }
+    }, [isListening, transcript]);
+
+    const handleVoiceCommand = async (transcript) => {
+        setNotification(`AI Processing: "${transcript}"...`);
+
+        try {
+            const response = await axios.post('/api/ai/process-command', { transcript });
+            const { action, payload } = response.data;
+
+            // Perform the action
+            if (action === 'GET_CATEGORY') navigate(`/category/${payload.category}`);
+            if (action === 'NAVIGATE') navigate(payload.page === 'home' ? '/' : `/${payload.page}`);
+            if (action === 'SEARCH') navigate(`/search?q=${payload.query}`);
+            if (action === 'ADD_TO_CART') {
+                const itemName = (payload.name || "").toLowerCase();
+                const item = allMenuItems.find(i =>
+                    i.name.toLowerCase().includes(itemName) ||
+                    itemName.includes(i.name.toLowerCase())
+                );
+
+                if (item) {
+                    addToCart(item);
+                    // toast is already handled inside addToCart in CartContext
+                } else {
+                    toast.error(`Sorry, I couldn't find "${payload.name || 'that item'}" in our menu.`);
+                }
+            }
+
+        } catch (error) {
+            console.error("Voice AI failed", error);
+            toast.error("I couldn't understand that command.");
+        }
+    };
 
     return (
         <div className="layout">

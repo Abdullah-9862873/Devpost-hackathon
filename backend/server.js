@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const menuRoutes = require('./routes/menuRoutes');
+const aiRoutes = require('./routes/aiRoutes.js');
 
 // Load environment variables
 dotenv.config({ path: '../.env' });
@@ -24,6 +25,9 @@ app.use('/api/menu', menuRoutes);
 app.get('/', (req, res) => {
     res.send('VoiceBite API is running...');
 });
+
+// AI Routes
+app.use('/api/ai', aiRoutes);
 
 app.listen(port, () => {
     console.log(`Backend server running on http://localhost:${port}`);
