@@ -2,7 +2,7 @@
 
 VoiceBite is a full-stack MERN application designed for a modern, hands-free restaurant experience. It features a voice-activated interface for customers to browse the menu and manage their cart, alongside a robust administrative dashboard for menu management.
 
----
+--- 
 
 ## 🚀 Features
 
@@ -117,4 +117,4 @@ To access management features, use the **Administration** section at the bottom 
 1. **Add Product**: Fill the form to add a new dish.
 2. **Manage Items**: Remove items from the database; changes reflect immediately on the home page.
 
----
+--- 
