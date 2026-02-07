@@ -17,14 +17,14 @@ const seedData = [
     { name: 'Pesto Penne', price: 13.49, category: 'pasta', description: 'Fresh basil pesto with pine nuts and olive oil.' },
 
     // Traditionals
-    { name: 'Chicken Fajita Pizza', price: 18.99, category: 'traditionals', description: 'Spicy fajita chicken, onions, and jalapeños.' },
+    { name: 'Chicken Fajita Pizza', price: 18.99, category: 'traditionals', description: 'Spicy fajita chicken, onions, and jalapeños.', discount: 10 },
     { name: 'Behari Kabab Pizza', price: 19.99, category: 'traditionals', description: 'Tender kabab chunks with special spicy sauce.' },
-    { name: 'Chicken Tikka Pizza', price: 17.99, category: 'traditionals', description: 'Traditional tikka chunks with onions and green chilies.' },
+    { name: 'Chicken Tikka Pizza', price: 17.99, category: 'traditionals', description: 'Traditional tikka chunks with onions and green chilies.', discount: 15 },
 
     // Desserts & Beverages
-    { name: 'Chocolate Lava Cake', price: 7.99, category: 'desserts', description: 'Warm chocolate cake with a gooey center.' },
+    { name: 'Chocolate Lava Cake', price: 7.99, category: 'desserts', description: 'Warm chocolate cake with a gooey center.', discount: 5 },
     { name: 'New York Cheesecake', price: 8.49, category: 'desserts', description: 'Classic creamy cheesecake with strawberry topping.' },
-    { name: 'Classic Coke', price: 2.49, category: 'desserts', description: 'Refreshing 500ml chilled soda.' },
+    { name: 'Classic Coke', price: 2.49, category: 'beverages', description: 'Refreshing 500ml chilled soda drink beverage.' },
 ];
 
 const seedDB = async () => {

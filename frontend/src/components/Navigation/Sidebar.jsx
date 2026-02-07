@@ -9,7 +9,8 @@ export const Sidebar = () => {
         { to: '/category/pizza', icon: <Pizza size={20} />, label: 'Pizza' },
         { to: '/category/pasta', icon: <UtensilsCrossed size={20} />, label: 'Pasta' },
         { to: '/category/traditionals', icon: <UtensilsCrossed size={20} />, label: 'Traditionals' },
-        { to: '/category/desserts', icon: <Coffee size={20} />, label: 'Desserts & Beverages' },
+        { to: '/category/desserts', icon: <Coffee size={20} />, label: 'Desserts' },
+        { to: '/category/beverages', icon: <GlassWater size={20} />, label: 'Beverages' },
         { to: '/category/deals', icon: <Percent size={20} />, label: 'Deals' },
     ];
 
