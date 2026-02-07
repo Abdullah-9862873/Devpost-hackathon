@@ -1,12 +1,13 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+
+// Load environment variables FIRST
+dotenv.config({ path: '../.env' });
+
 const connectDB = require('./config/db');
 const menuRoutes = require('./routes/menuRoutes');
 const aiRoutes = require('./routes/aiRoutes.js');
-
-// Load environment variables
-dotenv.config({ path: '../.env' });
 
 // Connect to Database
 connectDB();

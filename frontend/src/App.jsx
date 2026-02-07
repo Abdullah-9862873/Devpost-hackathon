@@ -19,9 +19,10 @@ function AppContent() {
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
-    const { addToCart } = useCart();
+    const { addToCart, clearCart } = useCart();
     const [featuredItems, setFeaturedItems] = useState([]);
     const [allMenuItems, setAllMenuItems] = useState([]);
+    const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
     useEffect(() => {
         const fetchAll = async () => {
@@ -44,15 +45,35 @@ function AppContent() {
 
     const handleVoiceCommand = async (transcript) => {
         setNotification(`AI Processing: "${transcript}"...`);
+        setIsLoading(true);
 
         try {
             const response = await axios.post('/api/ai/process-command', { transcript });
             const { action, payload } = response.data;
 
-            // Perform the action
-            if (action === 'GET_CATEGORY') navigate(`/category/${payload.category}`);
-            if (action === 'NAVIGATE') navigate(payload.page === 'home' ? '/' : `/${payload.page}`);
-            if (action === 'SEARCH') navigate(`/search?q=${payload.query}`);
+            if (action === 'GET_CATEGORY') {
+                const categoryExists = allMenuItems.some(item => item.category === payload.category);
+                if (categoryExists) {
+                    navigate(`/category/${payload.category}`);
+                } else {
+                    navigate(`/search?q=${payload.category}`);
+                }
+            }
+
+            if (action === 'GET_OFFERS') {
+                navigate('/offers');
+            }
+
+            if (action === 'SEARCH') {
+                navigate(`/search?q=${payload.query}`);
+            }
+
+            if (action === 'NAVIGATE') {
+                const page = payload.page.toLowerCase();
+                if (page === 'home' || page === 'menu') navigate('/');
+                else navigate(`/${page}`);
+            }
+
             if (action === 'ADD_TO_CART') {
                 const itemName = (payload.name || "").toLowerCase();
                 const item = allMenuItems.find(i =>
@@ -62,15 +83,51 @@ function AppContent() {
 
                 if (item) {
                     addToCart(item);
-                    // toast is already handled inside addToCart in CartContext
                 } else {
-                    toast.error(`Sorry, I couldn't find "${payload.name || 'that item'}" in our menu.`);
+                    toast.error(`I couldn't find "${payload.name || 'that item'}" on the menu.`);
                 }
+            }
+
+            if (action === 'PROCESS_PAYMENT') {
+                setIsProcessingOrder(true);
+                toast.loading('Processing your order...', { id: 'payment' });
+
+                // Simulate payment delay
+                setTimeout(() => {
+                    clearCart();
+                    setIsProcessingOrder(false);
+                    toast.success('Payment Successful! Your order is being prepared.', { id: 'payment', duration: 5000 });
+                    navigate('/');
+                }, 2000);
+            }
+
+            if (action === 'LIST_CATEGORIES') {
+                const categoryList = (payload.categories || []).join(', ');
+                if (categoryList) {
+                    toast(
+                        `We have: ${categoryList}. ${payload.hasOffers ? "We also have great deals today!" : ""}\nWhat would you like to have?`,
+                        { icon: '🍴', duration: 6000 }
+                    );
+                } else {
+                    toast.error("I couldn't fetch the categories. Try asking again?");
+                }
+            }
+
+            if (action === 'GUIDE_USER') {
+                toast(payload.message || "I can help you browse the menu and place an order!", { icon: '💡', duration: 8000 });
             }
 
         } catch (error) {
             console.error("Voice AI failed", error);
-            toast.error("I couldn't understand that command.");
+            if (error.response?.status === 429) {
+                toast.error("API Rate limit exceeded. Please wait a moment and try again.");
+            } else {
+                const errorMsg = error.response?.data?.details || "I hit a snag understanding that. Try again?";
+                toast.error(errorMsg);
+            }
+        } finally {
+            setIsLoading(false);
+            setNotification(null);
         }
     };
 
@@ -101,6 +158,7 @@ function AppContent() {
                     <Route path="/" element={<MenuView items={featuredItems} title="Recommended for You" />} />
                     <Route path="/category/:category" element={<CategoryView />} />
                     <Route path="/search" element={<SearchView />} />
+                    <Route path="/offers" element={<OffersView />} />
                     <Route path="/cart" element={<CartPage />} />
                     <Route path="/admin/add" element={<AddProduct />} />
                     <Route path="/admin/manage" element={<ManageProducts />} />
@@ -172,11 +230,13 @@ const SearchView = () => {
         const fetchResults = async () => {
             try {
                 const res = await axios.get('/api/menu');
-                const filtered = res.data.filter(item =>
-                    item.name.toLowerCase().includes(query) ||
-                    item.description.toLowerCase().includes(query) ||
-                    item.category.toLowerCase().includes(query)
-                );
+                const filtered = res.data.filter(item => {
+                    const searchTerms = query.split(' '); // Split "something to drink" into ["something", "to", "drink"]
+                    const itemText = `${item.name} ${item.description} ${item.category}`.toLowerCase();
+
+                    // Returns true if ANY of the search words are found in the item details
+                    return searchTerms.some(term => term.length > 2 && itemText.includes(term));
+                });
                 setResults(filtered);
             } catch (error) {
                 console.error('Error fetching search results:', error);
@@ -186,6 +246,31 @@ const SearchView = () => {
     }, [query]);
 
     return <MenuView items={results} title={`Search: ${query}`} />;
+};
+
+const OffersView = () => {
+    const [offers, setOffers] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchOffers = async () => {
+            try {
+                const res = await axios.get('/api/menu');
+                // Filter items that have a discount field and its > 0
+                const discounted = res.data.filter(item => item.discount && item.discount > 0);
+                setOffers(discounted);
+            } catch (error) {
+                console.error('Error fetching offers:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchOffers();
+    }, []);
+
+    if (loading) return <div className="loader-container"><div className="loader" /></div>;
+
+    return <MenuView items={offers} title="Flash Deals & Offers" />;
 };
 
 const CartPage = () => {
