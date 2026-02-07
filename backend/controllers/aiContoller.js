@@ -4,22 +4,18 @@ const MenuItem = require("../models/MenuItem");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
-const processCommand = async (req, res) => {
-    const { transcript } = req.body;
+// cache to reduce DB queries
+let menuCache = null;
+let cacheTime = 0;
+const CACHE_TTL = 60 * 1000; 
 
-    if (!transcript) {
-        return res.status(400).json({ error: "No transcript provided" });
-    }
+function buildPrompt(transcript, menuItems) {
+    const categories = [...new Set(menuItems.map(i => i.category))];
+    const menuContext = menuItems.map(item =>
+        `- ${item.name}: ${item.description} (Category: ${item.category})`
+    ).join('\n');
 
-    try {
-        // Fetch Menu Context
-        const menuItems = await MenuItem.find({}, 'name description category');
-        const categories = [...new Set(menuItems.map(i => i.category))];
-        const menuContext = menuItems.map(item =>
-            `- ${item.name}: ${item.description} (Category: ${item.category})`
-        ).join('\n');
-
-        const prompt = `
+    return `
 You are the VoiceBite Elite AI Concierge. 
 Your goal is to guide the user through their ordering journey with precision and salesmanship.
 
@@ -55,25 +51,42 @@ Return ONLY a JSON object:
 ### TRANSCRIPT:
 "${transcript}"
 `;
+}
 
+const processCommand = async (req, res) => {
+    const { transcript } = req.body;
+
+    if (!transcript) {
+        return res.status(400).json({ error: "No transcript provided" });
+    }
+
+    try {
+        // use cached items if available
+        if (!menuCache || Date.now() - cacheTime > CACHE_TTL) {
+            menuCache = await MenuItem.find({}, 'name description category');
+            cacheTime = Date.now();
+        }
+
+        const prompt = buildPrompt(transcript, menuCache);
+
+        // ai log response time for monitoring
+        const startTime = Date.now();
         const result = await model.generateContent(prompt);
         const responseText = result.response.text().trim();
+        console.log(`response time: ${Date.now() - startTime} ms`);
 
-        // More robust JSON extraction
-        const jsonStart = responseText.indexOf('{');
-        const jsonEnd = responseText.lastIndexOf('}') + 1;
-
-        if (jsonStart === -1 || jsonEnd === 0) {
-            console.error("AI returned malformed response:", responseText);
-            // Fallback to a search if AI fails to return JSON
+        let jsonContent;
+        try {
+            jsonContent = JSON.parse(responseText);
+        } catch {
+            console.error("AI returned malformed JSON:", responseText);
             return res.json({
                 action: 'SEARCH',
                 payload: { query: transcript }
             });
         }
 
-        const jsonContent = responseText.substring(jsonStart, jsonEnd);
-        res.json(JSON.parse(jsonContent));
+        res.json(jsonContent);
     } catch (error) {
         console.error("AI Error:", error);
         res.status(500).json({ error: "AI processing failed", details: error.message });
